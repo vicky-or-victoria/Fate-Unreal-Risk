@@ -1,3 +1,8 @@
+"""
+Database module for Fate Bot
+Handles all database operations with Neon PostgreSQL
+"""
+
 import asyncpg
 import os
 from datetime import datetime, timedelta
@@ -273,6 +278,58 @@ async def init_db():
         # INDEXES for performance
         # ====================================================================
         
+        # MIGRATION: Check if columns exist before creating indexes
+        # This handles cases where the database was created with an older schema
+        
+        # Check if 'level' column exists in summons table
+        level_exists = await conn.fetchval('''
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'summons' AND column_name = 'level'
+            )
+        ''')
+        
+        if not level_exists:
+            print('  Migrating summons table: Adding new columns...')
+            # Add all missing columns from the new schema
+            await conn.execute('ALTER TABLE summons ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1')
+            await conn.execute('ALTER TABLE summons ADD COLUMN IF NOT EXISTS experience INTEGER DEFAULT 0')
+            await conn.execute('ALTER TABLE summons ADD COLUMN IF NOT EXISTS base_attack INTEGER DEFAULT 100')
+            await conn.execute('ALTER TABLE summons ADD COLUMN IF NOT EXISTS base_defense INTEGER DEFAULT 100')
+            await conn.execute('ALTER TABLE summons ADD COLUMN IF NOT EXISTS base_hp INTEGER DEFAULT 1000')
+            await conn.execute('ALTER TABLE summons ADD COLUMN IF NOT EXISTS base_speed INTEGER DEFAULT 50')
+            await conn.execute('ALTER TABLE summons ADD COLUMN IF NOT EXISTS bonus_attack INTEGER DEFAULT 0')
+            await conn.execute('ALTER TABLE summons ADD COLUMN IF NOT EXISTS bonus_defense INTEGER DEFAULT 0')
+            await conn.execute('ALTER TABLE summons ADD COLUMN IF NOT EXISTS bonus_hp INTEGER DEFAULT 0')
+            await conn.execute('ALTER TABLE summons ADD COLUMN IF NOT EXISTS bonus_speed INTEGER DEFAULT 0')
+            await conn.execute('ALTER TABLE summons ADD COLUMN IF NOT EXISTS is_favorite BOOLEAN DEFAULT FALSE')
+            await conn.execute('ALTER TABLE summons ADD COLUMN IF NOT EXISTS total_battles INTEGER DEFAULT 0')
+            await conn.execute('ALTER TABLE summons ADD COLUMN IF NOT EXISTS battles_won INTEGER DEFAULT 0')
+            await conn.execute('ALTER TABLE summons ADD COLUMN IF NOT EXISTS last_battle TIMESTAMP')
+            print('  ✓ Summons table migrated successfully')
+        
+        # Check if users table has economy columns
+        quartz_exists = await conn.fetchval('''
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'users' AND column_name = 'saint_quartz'
+            )
+        ''')
+        
+        if not quartz_exists:
+            print('  Migrating users table: Adding economy columns...')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS saint_quartz INTEGER DEFAULT 100')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS summon_tickets INTEGER DEFAULT 3')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_daily_claim TIMESTAMP')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS battle_wins INTEGER DEFAULT 0')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS battle_losses INTEGER DEFAULT 0')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS elo_rating INTEGER DEFAULT 1000')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS total_summons INTEGER DEFAULT 0')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS current_streak INTEGER DEFAULT 0')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS longest_streak INTEGER DEFAULT 0')
+            print('  ✓ Users table migrated successfully')
+        
+        # Now create indexes (safe to do now that columns exist)
         await conn.execute('CREATE INDEX IF NOT EXISTS idx_summons_user_guild ON summons(user_id, guild_id)')
         await conn.execute('CREATE INDEX IF NOT EXISTS idx_summons_level ON summons(level DESC)')
         await conn.execute('CREATE INDEX IF NOT EXISTS idx_battles_guild ON battles(guild_id)')
