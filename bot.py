@@ -647,32 +647,69 @@ class ServantBattleSelect(discord.ui.Select):
 @bot.event
 async def on_ready():
     """Bot startup event"""
-    print(f'Logged in as {bot.user} (ID: {bot.user.id})')
-    print('------')
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    print(f'  Fate Summoning Bot Online')
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    print(f'  Bot: {bot.user.name}')
+    print(f'  ID: {bot.user.id}')
+    print(f'  Servers: {len(bot.guilds)}')
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     
-    await db.init_db()
-    print('Database initialized')
-    
-    # Sync commands
+    # 1. Initialize database FIRST
     try:
-        synced = await bot.tree.sync()
-        print(f'Synced {len(synced)} command(s)')
+        await db.init_db()
+        print('  ✓ Database initialized')
     except Exception as e:
-        print(f'Failed to sync commands: {e}')
+        print(f'  ✗ Database initialization failed: {e}')
+        import traceback
+        traceback.print_exc()
+        raise
     
-    # Start background tasks
-    cleanup_cooldowns.start()
-    print('Background tasks started')
+    # 2. Register persistent views BEFORE syncing commands (CRITICAL FIX)
+    bot.add_view(RegistrationView())
+    print('  ✓ Persistent views registered')
     
-    # Set bot presence
-    await bot.change_presence(
-        activity=discord.Activity(
-            type=discord.ActivityType.watching,
-            name="the Holy Grail War"
+    # 3. Sync commands with detailed logging
+    try:
+        print('  Syncing commands...')
+        synced = await bot.tree.sync()
+        print(f'  ✓ Synced {len(synced)} slash command(s)')
+        
+        # List all commands for verification
+        print('  Commands synced:')
+        for cmd in synced:
+            print(f'    - /{cmd.name}')
+            
+    except Exception as e:
+        print(f'  ✗ Failed to sync commands: {e}')
+        print(f'  Error type: {type(e).__name__}')
+        import traceback
+        traceback.print_exc()
+    
+    # 4. Start background tasks AFTER database is ready
+    try:
+        cleanup_cooldowns.start()
+        print('  ✓ Background tasks started')
+    except Exception as e:
+        print(f'  ✗ Failed to start background tasks: {e}')
+        import traceback
+        traceback.print_exc()
+    
+    # 5. Set bot presence
+    try:
+        await bot.change_presence(
+            activity=discord.Activity(
+                type=discord.ActivityType.watching,
+                name="the Holy Grail War"
+            )
         )
-    )
+        print('  ✓ Bot presence set')
+    except Exception as e:
+        print(f'  ✗ Failed to set presence: {e}')
     
-    print('Bot is ready!')
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    print('  Bot is ready!')
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 
 @tasks.loop(minutes=5)
 async def cleanup_cooldowns():

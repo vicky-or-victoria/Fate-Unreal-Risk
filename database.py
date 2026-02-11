@@ -1,8 +1,3 @@
-"""
-Database module for Fate Bot
-Handles all database operations with Neon PostgreSQL
-"""
-
 import asyncpg
 import os
 from datetime import datetime, timedelta
