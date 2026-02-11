@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 import asyncpg
 import os
-from typing import Optional
+from typing import Optional, Literal
 import asyncio
 from datetime import datetime
 from servants_data import SERVANTS, get_rank_color, get_rank_emoji, get_class_emoji
