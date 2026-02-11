@@ -1668,7 +1668,8 @@ async def adminlogs(interaction: discord.Interaction):
         target = ""
         if log['target_user_id']:
             target_user = interaction.guild.get_member(log['target_user_id'])
-            target = f" → {target_user.mention if target_user else f'ID:{log[\"target_user_id\"]}'}"
+            target_id = f"ID:{log['target_user_id']}"
+            target = f" → {target_user.mention if target_user else target_id}"
         
         timestamp = log['created_at'].strftime("%Y-%m-%d %H:%M")
         
